@@ -94,11 +94,11 @@ module CodeGenerator =
             
             let createCode =
                 match data.CreateCode with
-                | Some createCode -> createCode
+                | Some createCode -> sprintf "%s viewElement" createCode
                 | _ -> sprintf "%s()" data.TypeToInstantiate
 
             if data.TypeToInstantiate = data.FullName then
-                w.printfn "        %s viewElement" createCode
+                w.printfn "        %s" createCode
             else
                 w.printfn "        upcast (%s)" createCode
             
