@@ -90,7 +90,7 @@ module CodeGenerator =
         | None -> w
         | Some data ->
 
-            w.printfn "    static member Create%s () : %s =" data.Name data.FullName
+            w.printfn "    static member Create%s (viewElement: ViewElement) : %s =" data.Name data.FullName
             
             let createCode =
                 match data.CreateCode with
@@ -98,7 +98,7 @@ module CodeGenerator =
                 | _ -> sprintf "%s()" data.TypeToInstantiate
 
             if data.TypeToInstantiate = data.FullName then
-                w.printfn "        %s" createCode
+                w.printfn "        %s viewElement" createCode
             else
                 w.printfn "        upcast (%s)" createCode
             

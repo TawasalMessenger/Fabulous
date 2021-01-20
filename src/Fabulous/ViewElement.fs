@@ -113,7 +113,7 @@ type ViewRef<'T when 'T : not struct>() =
     member __.Unbox = handle
 
 /// A description of a visual element
-type ViewElement internal (targetType: Type, create: (unit -> obj), update: (ViewElement voption -> ViewElement -> obj -> unit), updateAttachedProperties: (int -> ViewElement voption -> ViewElement -> obj -> unit), attribs: KeyValuePair<int,obj>[]) =
+type ViewElement internal (targetType: Type, create: (ViewElement -> obj), update: (ViewElement voption -> ViewElement -> obj -> unit), updateAttachedProperties: (int -> ViewElement voption -> ViewElement -> obj -> unit), attribs: KeyValuePair<int,obj>[]) =
 
     // Recursive search of an attribute by its key.
     // Perf note: This is preferred to Array.tryFind because it avoids capturing the context with a lambda
@@ -127,11 +127,11 @@ type ViewElement internal (targetType: Type, create: (unit -> obj), update: (Vie
                 tryFindAttribRec key (i + 1)
         tryFindAttribRec key 0
 
-    new (targetType: Type, create: (unit -> obj), update: (ViewElement voption -> ViewElement -> obj -> unit), updateAttachedProperties: (int -> ViewElement voption -> ViewElement -> obj -> unit), attribsBuilder: AttributesBuilder) =
+    new (targetType: Type, create: (ViewElement -> obj), update: (ViewElement voption -> ViewElement -> obj -> unit), updateAttachedProperties: (int -> ViewElement voption -> ViewElement -> obj -> unit), attribsBuilder: AttributesBuilder) =
         ViewElement(targetType, create, update, updateAttachedProperties, attribsBuilder.Close())
 
     static member Create
-            (create: (unit -> 'T),
+            (create: (ViewElement -> 'T),
              update: (ViewElement voption -> ViewElement -> 'T -> unit),
              updateAttachedProperties: (int -> ViewElement voption -> ViewElement -> obj -> unit),
              attribsBuilder: AttributesBuilder) =
@@ -209,7 +209,7 @@ type ViewElement internal (targetType: Type, create: (unit -> obj), update: (Vie
     /// Create the UI element from the view description
     member x.Create() : obj =
         Debug.WriteLine (sprintf "Create %O" x.TargetType)
-        let target = create()
+        let target = create x
         x.Update(ValueNone, x, target)
         match x.TryGetAttributeKeyed(ViewElement.CreatedAttribKey) with
         | ValueSome f -> f target
