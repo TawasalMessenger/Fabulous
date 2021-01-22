@@ -233,6 +233,16 @@ type ViewElement internal (targetType: Type, create: (ViewElement -> obj), updat
         | None ->
             duplicateViewElement (n + 1) n // duplicate and add new attribute
 
+    /// Produce a new visual element without an adjusted attribute
+    member x.RemoveAttribute(key: AttributeKey<'T>) =
+        let existingAttrIndexOpt = attribs |> Array.tryFindIndex (fun attr -> attr.Key = key.KeyValue)
+        match existingAttrIndexOpt with
+        | Some _ ->
+            let attribs2 = attribs |> Array.filter (fun x -> x.Key <> key.KeyValue)
+            true, ViewElement(targetType, create, update, updateAttachedProperties, attribs2)
+        | None ->
+            false, x
+
     override x.ToString() = sprintf "%s(...)@%d" x.TargetType.Name (x.GetHashCode())
 
 
