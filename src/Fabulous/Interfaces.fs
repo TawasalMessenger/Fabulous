@@ -2,7 +2,41 @@
 namespace Fabulous
 
 open System
+open System.Collections.Generic
 open Fabulous.Tracing
+
+[<AutoOpen>]
+module internal AttributeKeys =
+    let attribKeys = Dictionary<string,int>()
+    let attribNames = Dictionary<int,string>()
+
+
+/// Represent an attribute key.
+/// Instead of referring to a property/event of a control by its name (string), we refer to it by a key (int)
+/// This reduces the memory footprint
+[<Struct>]
+type AttributeKey<'T> internal (keyv: int) =
+
+    static let getAttribKeyValue (attribName: string) : int =
+        match attribKeys.TryGetValue(attribName) with
+        | true, keyv -> keyv
+        | false, _ ->
+            let keyv = attribKeys.Count + 1
+            attribKeys.[attribName] <- keyv
+            attribNames.[keyv] <- attribName
+            keyv
+
+    new (keyName: string) = AttributeKey<'T>(getAttribKeyValue keyName)
+
+    member __.KeyValue = keyv
+
+    member __.Name = AttributeKey<'T>.GetName(keyv)
+
+    static member GetName(keyv: int) =
+        match attribNames.TryGetValue(keyv) with
+        | true, keyv -> keyv
+        | false, _ -> failwithf "unregistered attribute key %d" keyv
+
 
 type ProgramDefinition =
     { canReuseView: IViewElement -> IViewElement -> bool
@@ -16,6 +50,18 @@ and IViewElement =
     abstract Unmount: obj -> unit
     abstract TryKey: string voption with get
     abstract TargetType: Type with get
+
+    /// Get an attribute of the visual element
+    abstract TryGetAttributeKeyed: key: AttributeKey<'T> -> 'T voption
+
+    /// Get an attribute of the visual element
+    abstract TryGetAttribute: name: string -> 'T voption
+
+    /// Get an attribute of the visual element
+    abstract GetAttributeKeyed: key: AttributeKey<'T> -> 'T
+    
+    abstract RemoveAttribute: name: string -> (bool * IViewElement)
+
 
 type RunnerDefinition<'arg, 'msg, 'model, 'externalMsg> =
     { init: 'arg -> 'model * Cmd<'msg> * ('externalMsg list)

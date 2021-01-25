@@ -4,37 +4,6 @@ namespace Fabulous
 open System
 open System.Collections.Generic
 
-[<AutoOpen>]
-module internal AttributeKeys =
-    let attribKeys = Dictionary<string,int>()
-    let attribNames = Dictionary<int,string>()
-
-/// Represent an attribute key.
-/// Instead of referring to a property/event of a control by its name (string), we refer to it by a key (int)
-/// This reduces the memory footprint
-[<Struct>]
-type AttributeKey<'T> internal (keyv: int) =
-
-    static let getAttribKeyValue (attribName: string) : int =
-        match attribKeys.TryGetValue(attribName) with
-        | true, keyv -> keyv
-        | false, _ ->
-            let keyv = attribKeys.Count + 1
-            attribKeys.[attribName] <- keyv
-            attribNames.[keyv] <- attribName
-            keyv
-
-    new (keyName: string) = AttributeKey<'T>(getAttribKeyValue keyName)
-
-    member __.KeyValue = keyv
-
-    member __.Name = AttributeKey<'T>.GetName(keyv)
-
-    static member GetName(keyv: int) =
-        match attribNames.TryGetValue(keyv) with
-        | true, keyv -> keyv
-        | false, _ -> failwithf "unregistered attribute key %d" keyv
-
 /// A description of a visual element
 type AttributesBuilder () =
     let mutable attribs : KeyValuePair<int, obj> list = []
@@ -69,7 +38,7 @@ type Registrar private () =
     static member Register
         (
             name: string,
-            create: DynamicViewElement -> obj voption -> 'T,
+            create: ProgramDefinition -> DynamicViewElement -> obj voption -> 'T,
             update: ProgramDefinition -> DynamicViewElement voption -> DynamicViewElement -> 'T -> unit,
             updateAttachedProperties: int -> ProgramDefinition -> IViewElement voption -> IViewElement -> obj -> unit,
             unmount: DynamicViewElement -> 'T -> unit
@@ -82,7 +51,7 @@ type Registrar private () =
                 DynamicViewElementHandler(
                     key,
                     typeof<'T>,
-                    (fun curr parentOpt -> create curr parentOpt |> box),
+                    (fun program curr parentOpt -> create program curr parentOpt |> box),
                     (fun def prevOpt curr target -> update def prevOpt curr (unbox target)),
                     updateAttachedProperties,
                     (fun curr target -> unmount curr (unbox target))
@@ -104,7 +73,7 @@ and [<Struct>] DynamicViewElementHandler
         (
             key: int,
             targetType: Type,
-            create: DynamicViewElement -> obj voption -> obj,
+            create: ProgramDefinition -> DynamicViewElement -> obj voption -> obj,
             update: ProgramDefinition -> DynamicViewElement voption -> DynamicViewElement -> obj -> unit,
             updateAttachedProperties: int -> ProgramDefinition -> IViewElement voption -> IViewElement -> obj -> unit,
             unmount: DynamicViewElement -> obj -> unit
@@ -112,7 +81,7 @@ and [<Struct>] DynamicViewElementHandler
 
     member x.Key = key
     member x.TargetType = targetType
-    member x.Create(curr, parentOpt) = create curr parentOpt
+    member x.Create(definition, curr, parentOpt) = create definition curr parentOpt
     member x.Update(definition, prevOpt, curr, target) = update definition prevOpt curr target
     member x.UpdateAttachedProperties(attrKey, definition, prevOpt, curr, target) = updateAttachedProperties attrKey definition prevOpt curr target
     member x.Unmount(curr, target) = unmount curr target
@@ -150,27 +119,13 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
     member x.TryKey with get () = tryGetAttributeKeyed DynamicViewElement.KeyAttribKey
     member x.TargetType = x.Handler.TargetType
 
-    /// Get an attribute of the visual element
-    member x.TryGetAttributeKeyed<'T>(key: AttributeKey<'T>) =
-        tryGetAttributeKeyed key
-
-    /// Get an attribute of the visual element
-    member x.TryGetAttribute<'T>(name: string) =
-        tryGetAttributeKeyed (AttributeKey<'T> name)
-
-    /// Get an attribute of the visual element
-    member x.GetAttributeKeyed<'T>(key: AttributeKey<'T>) =
-        match tryFindAttrib key.KeyValue with
-        | ValueSome kvp -> unbox<'T>(kvp.Value)
-        | ValueNone -> failwithf "Property '%s' does not exist on %s" key.Name x.Handler.TargetType.Name
-
     member x.Create(definition: ProgramDefinition, parentOpt: obj voption) =
         ProgramTracing.traceDebug definition (sprintf "Create %O" x.Handler.TargetType)
 
-        let target = x.Handler.Create(x, parentOpt)
+        let target = x.Handler.Create(definition, x, parentOpt)
         x.Update(definition, ValueNone, target)
 
-        match x.TryGetAttributeKeyed(DynamicViewElement.CreatedAttribKey) with
+        match tryGetAttributeKeyed DynamicViewElement.CreatedAttribKey with
         | ValueSome created -> created target
         | ValueNone -> ()
 
@@ -179,8 +134,11 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
     member x.Update(definition, prevOpt: DynamicViewElement voption, target) =
         ProgramTracing.traceDebug definition (sprintf "Update %A" x)
 
-        let prevViewRefOpt = match prevOpt with ValueNone -> ValueNone | ValueSome prev -> prev.TryGetAttributeKeyed(DynamicViewElement.RefAttribKey)
-        let currViewRefOpt = x.TryGetAttributeKeyed(DynamicViewElement.RefAttribKey)
+        let prevViewRefOpt =
+            match prevOpt with
+            | ValueNone -> ValueNone
+            | ValueSome prev -> (prev :> IViewElement).TryGetAttributeKeyed(DynamicViewElement.RefAttribKey)
+        let currViewRefOpt = tryGetAttributeKeyed DynamicViewElement.RefAttribKey
 
         // To avoid triggering unwanted events, don't unset if prevOpt = None or ViewRef is the same instance for prev and curr
         match struct (prevViewRefOpt, currViewRefOpt) with
@@ -204,6 +162,21 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
         // TODO: Replace existing attribute
         DynamicViewElement(handlerKey, KeyValuePair(key.KeyValue, box value) :: attribs)
 
+        
+    /// Get an attribute of the visual element
+    member x.TryGetAttributeKeyed<'T>(key: AttributeKey<'T>) =
+        tryGetAttributeKeyed key
+
+    /// Get an attribute of the visual element
+    member x.TryGetAttribute<'T>(name: string) =
+        tryGetAttributeKeyed (AttributeKey<'T> name)
+
+    /// Get an attribute of the visual element
+    member x.GetAttributeKeyed<'T>(key: AttributeKey<'T>) =
+        match tryFindAttrib key.KeyValue with
+        | ValueSome kvp -> unbox<'T>(kvp.Value)
+        | ValueNone -> failwithf "Property '%s' does not exist on %s" key.Name x.Handler.TargetType.Name
+
     interface IViewElement with
         member x.Create(definition, parentOpt) = x.Create(definition, parentOpt)
         member x.Update(definition, prevOpt, target) =
@@ -212,10 +185,25 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
                 | ValueNone -> ValueNone
                 | ValueSome prev -> ValueSome (prev :?> DynamicViewElement)
             x.Update(definition, prevOpt, target)
+        
+        /// Get an attribute of the visual element
+        member x.TryGetAttributeKeyed<'T>(key: AttributeKey<'T>) =
+            tryGetAttributeKeyed key
+
+        /// Get an attribute of the visual element
+        member x.TryGetAttribute<'T>(name: string) =
+            tryGetAttributeKeyed (AttributeKey<'T> name)
+
+        /// Get an attribute of the visual element
+        member x.GetAttributeKeyed<'T>(key: AttributeKey<'T>) =
+            match tryFindAttrib key.KeyValue with
+            | ValueSome kvp -> unbox<'T>(kvp.Value)
+            | ValueNone -> failwithf "Property '%s' does not exist on %s" key.Name x.Handler.TargetType.Name
+
             
         member x.Unmount(target) =
             // Unset the ViewRef if defined
-            match x.TryGetAttributeKeyed(DynamicViewElement.RefAttribKey) with
+            match tryGetAttributeKeyed DynamicViewElement.RefAttribKey with
             | ValueNone -> ()
             | ValueSome viewRef -> viewRef.Unset()
             
@@ -224,5 +212,18 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
             
         member x.TryKey with get () = x.TryKey
         member x.TargetType with get () = x.Handler.TargetType
+        
+        /// Remove an attribute from the visual element
+        member x.RemoveAttribute(name) =
+            match attribKeys.TryGetValue name with
+            | true, key ->
+                let attribs2 = attribs |> List.filter (fun x -> x.Key <> key)
+                if attribs.Length = attribs2.Length then
+                    false, x :> IViewElement
+                else
+                    true, DynamicViewElement(handlerKey, attribs2) :> IViewElement
+            | _ ->
+                false, x :> IViewElement
+
 
     override x.ToString() = sprintf "%s(...)@%d" x.Handler.TargetType.Name (x.GetHashCode())

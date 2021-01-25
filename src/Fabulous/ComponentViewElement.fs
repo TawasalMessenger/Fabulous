@@ -17,8 +17,16 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
         state: (('state -> 'msg) * 'state) voption,
         externalMsg: ('externalMsg -> unit) voption
     ) =
+    
+    let mutable currentView = ValueNone
 
     let withExternalMsgsIfNeeded (runnerDefinition: RunnerDefinition<'arg, 'msg, 'model, 'externalMsg>) =
+        let view model dispatch =
+            let v = (runnerDefinition.view model dispatch)
+            currentView <- ValueSome v
+            v
+        
+        let runnerDefinition = { runnerDefinition with view = view }
         match externalMsg with
         | ValueNone -> runnerDefinition
         | ValueSome onExternalMsg ->
@@ -48,7 +56,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     member x.RunnerDefinition = runnerDefinition
 
     interface IComponentViewElement with
-        member x.Create(definition, parentOpt) =
+        member x.Create(_, parentOpt) =
             let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
             let runner = handler.CreateRunner(arg)
             let target = runner.Start(runnerDefinition, ValueNone, parentOpt)
@@ -56,13 +64,14 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             handler.SetRunnerForTarget(ValueSome runner, target)
             target
 
-        member x.Update(definition, prevOpt, target) =
+        member x.Update(_, prevOpt, target) =
             match handler.GetRunnerForTarget(target) with
             | ValueNone -> failwith "Can't reuse a control without an associated runner"
             | ValueSome runner ->
                 // Only change the definition when it's actually a different runner definition
                 match prevOpt with
-                | ValueSome (:? ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg> as prev) when System.Object.ReferenceEquals(prev.RunnerDefinition, runnerDefinition) -> ()
+                | ValueSome (:? ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg> as prev)
+                    when System.Object.ReferenceEquals(prev.RunnerDefinition, runnerDefinition) -> ()
                 | _ ->
                     let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
                     runner.Stop()
@@ -76,6 +85,23 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             | ValueSome runner ->
                 runner.Stop()
                 handler.SetRunnerForTarget(ValueNone, target)
+                
+        
+        /// Get an attribute of the visual element
+        member x.TryGetAttributeKeyed(key) = currentView |> ValueOption.bind (fun x -> x.TryGetAttributeKeyed key)
 
+        /// Get an attribute of the visual element
+        member x.TryGetAttribute(name) = currentView |> ValueOption.bind (fun x -> x.TryGetAttribute name)
+
+        /// Get an attribute of the visual element
+        member x.GetAttributeKeyed(key) = currentView.Value.GetAttributeKeyed key
+
+        /// Remove an attribute from the visual element
+        member x.RemoveAttribute(name) =
+            match currentView with
+            | ValueSome currentView -> currentView.RemoveAttribute(name)
+            | ValueNone _ -> false, x :> IViewElement
+        
+        
         member x.TryKey = keyOpt
         member x.TargetType = x.TargetType
