@@ -7,6 +7,8 @@ type IComponentHandler<'arg, 'msg, 'model, 'externalMsg> =
 
 type IComponentViewElement =
     inherit IViewElement
+    
+    abstract CreateForTarget: ProgramDefinition * obj * obj voption -> obj
 
 type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     (
@@ -55,6 +57,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     
     member x.RunnerDefinition = runnerDefinition
 
+
     interface IComponentViewElement with
         member x.Create(_, parentOpt) =
             let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
@@ -63,6 +66,15 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             dispatchStateChangedIfNeeded runner
             handler.SetRunnerForTarget(ValueSome runner, target)
             target
+            
+        member x.CreateForTarget(_, target, parentOpt) =
+            let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
+            let runner = handler.CreateRunner(arg)
+            let target = runner.Start(runnerDefinition, ValueSome (box target), parentOpt)
+            dispatchStateChangedIfNeeded runner
+            handler.SetRunnerForTarget(ValueSome runner, target)
+            target
+            
 
         member x.Update(_, prevOpt, target) =
             match handler.GetRunnerForTarget(target) with
