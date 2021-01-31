@@ -61,6 +61,8 @@ and IViewElement =
     abstract GetAttributeKeyed: key: AttributeKey<'T> -> 'T
     
     abstract RemoveAttribute: name: string -> (bool * IViewElement)
+    
+    abstract RemoveAttributeKeyed: name: AttributeKey<'T> -> (bool * IViewElement)
 
 
 type RunnerDefinition<'arg, 'msg, 'model, 'externalMsg> =

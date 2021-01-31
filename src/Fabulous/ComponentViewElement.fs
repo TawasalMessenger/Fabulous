@@ -113,6 +113,12 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             match currentView with
             | ValueSome currentView -> currentView.RemoveAttribute(name)
             | ValueNone _ -> false, x :> IViewElement
+
+        /// Remove an attribute from the visual element
+        member x.RemoveAttributeKeyed(key) =
+            match currentView with
+            | ValueSome currentView -> currentView.RemoveAttributeKeyed(key)
+            | ValueNone _ -> false, x :> IViewElement
         
         
         member x.TryKey = keyOpt

@@ -214,16 +214,21 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
         member x.TargetType with get () = x.Handler.TargetType
         
         /// Remove an attribute from the visual element
-        member x.RemoveAttribute(name) =
-            match attribKeys.TryGetValue name with
-            | true, key ->
-                let attribs2 = attribs |> List.filter (fun x -> x.Key <> key)
+        member x.RemoveAttributeKeyed(key) =
+            match tryFindAttrib key.KeyValue with
+            | ValueSome key ->
+                let attribs2 = attribs |> List.filter (fun x -> x.Key <> key.Key)
                 if attribs.Length = attribs2.Length then
                     false, x :> IViewElement
                 else
                     true, DynamicViewElement(handlerKey, attribs2) :> IViewElement
             | _ ->
                 false, x :> IViewElement
+        
+        /// Remove an attribute from the visual element
+        member x.RemoveAttribute(name) =
+            (x :> IViewElement).RemoveAttributeKeyed(AttributeKey(name))
+
 
 
     override x.ToString() = sprintf "%s(...)@%d" x.Handler.TargetType.Name (x.GetHashCode())
