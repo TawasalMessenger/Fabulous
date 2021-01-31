@@ -30,8 +30,6 @@ module Models =
         /// If the InputType is an F# List, the ModelType will automatically set to an array
         member val ModelType: string option = None with get, set
         
-        member val OriginalType: string option = None with get, set
-        
         /// The function that converts the input value to the model type
         /// If the InputType is an F# List, the convert function will automatically be Array.ofList
         member val ConvertInputToModel: string option = None with get, set
