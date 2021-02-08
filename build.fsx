@@ -365,9 +365,11 @@ Target.create "PublishNuGetPackages" (fun _ ->
         | s when not (System.String.IsNullOrWhiteSpace s) -> s
         | _ -> failwith "Please set the NUGET_APIKEY environment variable to a NuGet API key with write access to the Fabulous packages."
 
+    let nugetApiEndpoint = Environment.environVarOrDefault "NUGET_APIENDPOINT" "https://api.nuget.org/v3/index.json"
+
     // dotnet publishes both nupkg and snupkg by default
     let path = System.IO.Path.Combine(buildDir, "*.nupkg")
-    DotNet.exec id "nuget" (sprintf "push %s -k %s --skip-duplicate -s https://api.nuget.org/v3/index.json" path nugetApiKey) |> ignore
+    DotNet.exec id "nuget" (sprintf "push %s -k %s --skip-duplicate -s %s" path nugetApiKey nugetApiEndpoint) |> ignore
 )
 
 Target.create "Prepare" ignore
