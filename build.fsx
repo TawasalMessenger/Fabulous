@@ -442,11 +442,11 @@ open Fake.Core.TargetOperators
     ==> "Test"
 
 "Pack"
-    ==> "TestTemplatesNuGet"
+    // ==> "TestTemplatesNuGet"
     ==> "Test"
 
 "Test"
-    ==> "CreateGitHubRelease"
+    // ==> "CreateGitHubRelease"
     ==> "PublishNuGetPackages"
     ==> "Release"
 
