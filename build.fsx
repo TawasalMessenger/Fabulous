@@ -435,10 +435,10 @@ open Fake.Core.TargetOperators
     ==> "Pack"
 
 "Build"
-    ==> "BuildFabulousXamarinFormsSamples"
-    ==> "RunFabulousXamarinFormsSamplesTests"
-    ==> "BuildFabulousStaticViewSamples"
-    ==> "TestSamples"
+    // ==> "BuildFabulousXamarinFormsSamples"
+    // ==> "RunFabulousXamarinFormsSamplesTests"
+    // ==> "BuildFabulousStaticViewSamples"
+    // ==> "TestSamples"
     ==> "Test"
 
 "Pack"
