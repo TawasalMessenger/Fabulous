@@ -143,6 +143,5 @@ module Reader =
                         tryGetProperty
                         propertyBaseType
                         baseTypeName)
-        
         WorkflowResult.ok data
 
