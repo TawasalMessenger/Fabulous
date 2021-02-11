@@ -10,7 +10,7 @@ module DynamicViewElementTests =
     type FakeControl() = class end
 
     let getFakeControlViewElement attribs =
-        let create _ _ = FakeControl()
+        let create _ _ _ = FakeControl()
         let update _ _ _ _ = ()
         let updateAttachedProperties _ _ _ _ _ = ()
         let unmount _ _ = ()
