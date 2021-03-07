@@ -60,7 +60,6 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     
     member x.Key = key
 
-
     interface IComponentViewElement with
         member x.Create(_, parentOpt) =
             let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
@@ -72,8 +71,8 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             
         member x.CreateForTarget(_, target, parentOpt) =
             let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
-            let runner = handler.CreateRunner(arg)
-            let target = runner.Start(runnerDefinition, ValueSome (box target), parentOpt)
+            let runner = handler.CreateRunner()
+            let target = runner.Start(runnerDefinition, ValueSome (box target), parentOpt, arg)
             dispatchStateChangedIfNeeded runner
             handler.SetRunnerForTarget(ValueSome runner, target)
             target
