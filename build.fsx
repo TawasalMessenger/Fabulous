@@ -203,9 +203,10 @@ Target.create "BuildFabulousXamarinFormsDependencies" (fun _ ->
 Target.create "RunGeneratorForFabulousXamarinForms" (fun _ ->
     let generatorPath = "Fabulous.XamarinForms/tools/Fabulous.XamarinForms.Generator/bin/Release/netcoreapp3.1/Fabulous.XamarinForms.Generator.dll"
     let mappingFilePath = "Fabulous.XamarinForms/src/Fabulous.XamarinForms/Xamarin.Forms.Core.json"
-    let outputFilePath = "Fabulous.XamarinForms/src/Fabulous.XamarinForms/Xamarin.Forms.Core.fs" 
+    let attributesOutputFilePath = "Fabulous.XamarinForms/src/Fabulous.XamarinForms/Xamarin.Forms.Core.Attributes.fs"
+    let buildersOutputFilePath = "Fabulous.XamarinForms/src/Fabulous.XamarinForms/Xamarin.Forms.Core.fs"
 
-    DotNet.exec id generatorPath (sprintf "-m %s -o %s" mappingFilePath outputFilePath)
+    DotNet.exec id generatorPath (sprintf "-m %s -a %s -b %s" mappingFilePath attributesOutputFilePath buildersOutputFilePath)
     |> (fun x ->
         match x.OK with
         | true -> ()
@@ -231,9 +232,10 @@ Target.create "RunGeneratorForFabulousXamarinFormsExtensions" (fun _ ->
         -- "Fabulous.XamarinForms/extensions/**/obj/*.json"
     
     for mappingFile in files do
-        let outputFile = mappingFile.Replace(".json", ".fs")
+        let attributesOutputFile = mappingFile.Replace(".json", ".Attributes.fs")
+        let buildersOutputFile = mappingFile.Replace(".json", ".fs")
 
-        DotNet.exec id generatorPath (sprintf "-m %s -o %s" mappingFile outputFile)
+        DotNet.exec id generatorPath (sprintf "-m %s -a %s -b %s" mappingFile attributesOutputFile buildersOutputFile)
         |> (fun x ->
             match x.OK with
             | true -> ()
@@ -363,9 +365,11 @@ Target.create "PublishNuGetPackages" (fun _ ->
         | s when not (System.String.IsNullOrWhiteSpace s) -> s
         | _ -> failwith "Please set the NUGET_APIKEY environment variable to a NuGet API key with write access to the Fabulous packages."
 
+    let nugetApiEndpoint = Environment.environVarOrDefault "NUGET_APIENDPOINT" "https://api.nuget.org/v3/index.json"
+
     // dotnet publishes both nupkg and snupkg by default
     let path = System.IO.Path.Combine(buildDir, "*.nupkg")
-    DotNet.exec id "nuget" (sprintf "push %s -k %s --skip-duplicate -s https://api.nuget.org/v3/index.json" path nugetApiKey) |> ignore
+    DotNet.exec id "nuget" (sprintf "push %s -k %s --skip-duplicate -s %s" path nugetApiKey nugetApiEndpoint) |> ignore
 )
 
 Target.create "Prepare" ignore
@@ -431,18 +435,18 @@ open Fake.Core.TargetOperators
     ==> "Pack"
 
 "Build"
-    ==> "BuildFabulousXamarinFormsSamples"
-    ==> "RunFabulousXamarinFormsSamplesTests"
-    ==> "BuildFabulousStaticViewSamples"
-    ==> "TestSamples"
+    // ==> "BuildFabulousXamarinFormsSamples"
+    // ==> "RunFabulousXamarinFormsSamplesTests"
+    // ==> "BuildFabulousStaticViewSamples"
+    // ==> "TestSamples"
     ==> "Test"
 
 "Pack"
-    ==> "TestTemplatesNuGet"
+    // ==> "TestTemplatesNuGet"
     ==> "Test"
 
 "Test"
-    ==> "CreateGitHubRelease"
+    // ==> "CreateGitHubRelease"
     ==> "PublishNuGetPackages"
     ==> "Release"
 
