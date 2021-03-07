@@ -56,5 +56,10 @@ module NameForm =
     let program = XamarinFormsProgram.mkComponent init update view
 
     type Fabulous.XamarinForms.View with
-        static member inline NameForm(onExternalMsg) = Component.forProgramWithExternalMsg(program, onExternalMsg)
+        static member inline NameForm(key, onExternalMsg) =
+            Component.forProgram(
+                key,
+                program,
+                externalMsg = onExternalMsg
+            )
 

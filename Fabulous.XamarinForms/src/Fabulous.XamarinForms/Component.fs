@@ -10,7 +10,7 @@ module Component =
 
     type ComponentHandler<'arg, 'msg, 'model, 'externalMsg>() =
         interface IComponentHandler<'arg, 'msg, 'model, 'externalMsg> with
-            member x.CreateRunner(arg) = Runner<'arg, 'msg, 'model, 'externalMsg>(arg) :> IRunner<'arg, 'msg, 'model, 'externalMsg>
+            member x.CreateRunner() = Runner<'arg, 'msg, 'model, 'externalMsg>() :> IRunner<'arg, 'msg, 'model, 'externalMsg>
 
             member x.GetRunnerForTarget(target) =
                 match (target :?> Xamarin.Forms.BindableObject).GetValue(ComponentRunnerProperty) with
@@ -22,19 +22,19 @@ module Component =
                 match runnerOpt with
                 | ValueNone -> bindableObject.ClearValue(ComponentRunnerProperty)
                 | ValueSome runner -> bindableObject.SetValue(ComponentRunnerProperty, runner)
-
-    let forProgram(program) =
-        let handler = ComponentHandler<unit, 'msg, 'model, 'externalMsg>()
-        ComponentViewElement(handler, program, ValueNone, (), ValueNone, ValueNone)
-
-    let forProgramWithArgs(program, args) =
-        let handler = ComponentHandler<'arg, 'msg, 'model, 'externalMsg>()
-        ComponentViewElement(handler, program, ValueNone, args, ValueNone, ValueNone)
-
-    let forProgramWithState(program, state, onStateChanged) =
-        let handler = ComponentHandler<unit, 'msg, 'model, 'externalMsg>()
-        ComponentViewElement(handler, program, ValueNone, (), ValueSome (onStateChanged, state), ValueNone)
-
-    let forProgramWithExternalMsg(program, onExternalMsg) =
-        let handler = ComponentHandler<unit, 'msg, 'model, 'externalMsg>()
-        ComponentViewElement(handler, program, ValueNone, (), ValueNone, ValueSome onExternalMsg)
+    
+[<AbstractClass; Sealed>]
+type Component() =
+    static member inline forProgram(key, program, ?state: (('state -> 'msg) * 'state), ?externalMsg) =
+        let stateOpt = match state with Some x -> ValueSome x | None -> ValueNone
+        let externalMsgOpt = match externalMsg with Some x -> ValueSome x | None -> ValueNone
+        
+        let handler = Component.ComponentHandler<unit, 'msg, 'model, 'externalMsg>()
+        ComponentViewElement(handler, program, key, (), stateOpt, externalMsgOpt)
+    
+    static member inline forProgramWithArgs(key, program, args, ?state: (('state -> 'msg) * 'state), ?externalMsg) =
+        let stateOpt = match state with Some x -> ValueSome x | None -> ValueNone
+        let externalMsgOpt = match externalMsg with Some x -> ValueSome x | None -> ValueNone
+        
+        let handler = Component.ComponentHandler<'arg, 'msg, 'model, 'externalMsg>()
+        ComponentViewElement(handler, program, key, args, stateOpt, externalMsgOpt)

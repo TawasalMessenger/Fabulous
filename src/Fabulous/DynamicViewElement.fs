@@ -68,7 +68,7 @@ type Registrar private () =
 /// An handler has a reference to the TargetType, the Create and Update functions
 /// The handler is identified by its key once registered in the Registrar
 /// The ViewElement only needs to store that key to access those functions
-and [<Struct>] DynamicViewElementHandler
+and DynamicViewElementHandler
     internal
         (
             key: int,
@@ -158,9 +158,9 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
 
     /// Produce a new visual element with an adjusted attribute
     member __.WithAttribute(key: AttributeKey<'T>, value: 'T) =
-
-        // TODO: Replace existing attribute
-        DynamicViewElement(handlerKey, KeyValuePair(key.KeyValue, box value) :: attribs)
+        let newAttrib = KeyValuePair(key.KeyValue, box value)
+        let attribs = attribs |> List.filter (fun kvp -> kvp.Key <> key.KeyValue)
+        DynamicViewElement(handlerKey, newAttrib :: attribs)
 
         
     /// Get an attribute of the visual element
