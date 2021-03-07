@@ -1,10 +1,11 @@
 namespace Fabulous
 
 type IComponentHandler<'arg, 'msg, 'model, 'externalMsg> =
-    abstract CreateRunner: 'arg -> IRunner<'arg, 'msg, 'model, 'externalMsg>
+    abstract CreateRunner: unit -> IRunner<'arg, 'msg, 'model, 'externalMsg>
     abstract GetRunnerForTarget: obj -> IRunner<'arg, 'msg, 'model, 'externalMsg> voption
     abstract SetRunnerForTarget: IRunner<'arg, 'msg, 'model, 'externalMsg> voption * obj -> unit
 
+/// Represent a component with its own internal runner
 type IComponentViewElement =
     inherit IViewElement
     
@@ -14,7 +15,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     (
         handler: IComponentHandler<'arg, 'msg, 'model, 'externalMsg>,
         runnerDefinition: RunnerDefinition<'arg, 'msg, 'model, 'externalMsg>,
-        keyOpt: string voption,
+        key: string,
         arg: 'arg,
         state: (('state -> 'msg) * 'state) voption,
         externalMsg: ('externalMsg -> unit) voption
@@ -56,13 +57,15 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     member x.TargetType = runnerDefinition.GetType()
     
     member x.RunnerDefinition = runnerDefinition
+    
+    member x.Key = key
 
 
     interface IComponentViewElement with
         member x.Create(_, parentOpt) =
             let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
-            let runner = handler.CreateRunner(arg)
-            let target = runner.Start(runnerDefinition, ValueNone, parentOpt)
+            let runner = handler.CreateRunner()
+            let target = runner.Start(runnerDefinition, ValueNone, parentOpt, arg)
             dispatchStateChangedIfNeeded runner
             handler.SetRunnerForTarget(ValueSome runner, target)
             target
@@ -82,12 +85,10 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             | ValueSome runner ->
                 // Only change the definition when it's actually a different runner definition
                 match prevOpt with
-                | ValueSome (:? ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg> as prev)
-                    when System.Object.ReferenceEquals(prev.RunnerDefinition, runnerDefinition) -> ()
+                | ValueSome (:? ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg> as prev) when prev.Key = x.Key && System.Object.ReferenceEquals(prev.RunnerDefinition, runnerDefinition) -> ()
                 | _ ->
                     let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
-                    runner.Stop()
-                    runner.Start(runnerDefinition, ValueSome (box target), ValueNone) |> ignore
+                    runner.Restart(runnerDefinition, target, arg)
                     
                 dispatchStateChangedIfNeeded runner
                 
@@ -120,6 +121,5 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             | ValueSome currentView -> currentView.RemoveAttributeKeyed(key)
             | ValueNone _ -> false, x :> IViewElement
         
-        
-        member x.TryKey = keyOpt
+        member x.TryKey = ValueSome key
         member x.TargetType = x.TargetType

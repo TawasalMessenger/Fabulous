@@ -6,14 +6,15 @@ type RunnerDispatch<'msg>()  =
     member x.DispatchViaThunk = id (fun msg -> dispatchImpl msg)
     member x.SetDispatchThunk v = dispatchImpl <- v
 
-/// Starts the Elmish dispatch loop for the page with the given Elmish program
-type Runner<'arg, 'msg, 'model, 'externalMsg>(arg: 'arg) =
+/// Starts the dispatch loop for the page with the given program
+type Runner<'arg, 'msg, 'model, 'externalMsg>() =
     let mutable runnerDefinition = Unchecked.defaultof<RunnerDefinition<'arg, 'msg, 'model, 'externalMsg>>
     let mutable programDefinition = Unchecked.defaultof<ProgramDefinition>
     let mutable lastModel = Unchecked.defaultof<'model>
     let mutable lastViewData = Unchecked.defaultof<IViewElement>
     let mutable disposableSubscription: System.IDisposable = null
     let mutable rootView = null
+    let mutable lastArg = Unchecked.defaultof<'arg>
     let dispatch = RunnerDispatch<'msg>()
 
     let rec processMsg msg =
@@ -48,10 +49,14 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>(arg: 'arg) =
 
         RunnerTracing.traceDebug runnerDefinition (sprintf "View updated for model %0A" updatedModel)
 
-    member x.Start(definition, rootOpt, parentOpt) =
+    
+    member x.Arg = lastArg
+    
+    member private x.StartInternal(definition, rootOpt, parentOpt, prevModelOpt, arg) =
         RunnerTracing.traceDebug definition (sprintf "Starting runner for %0A..." rootOpt)
 
         dispatch.SetDispatchThunk(definition.syncDispatch processMsg)
+        lastArg <- arg
         runnerDefinition <- definition
         programDefinition <-
             { canReuseView = definition.canReuseView
@@ -72,7 +77,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>(arg: 'arg) =
                 initialView.Create(programDefinition, parentOpt)
 
             | ValueSome root ->
-                initialView.Update(programDefinition, ValueNone, root)
+                initialView.Update(programDefinition, prevModelOpt, root)
                 root
 
         rootView <- target
@@ -88,6 +93,13 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>(arg: 'arg) =
         RunnerTracing.traceDebug definition (sprintf "Runner started for %0A" rootOpt)
         target
         
+    member x.Start(definition, rootOpt, parentOpt, arg) =
+        x.StartInternal(definition, rootOpt, parentOpt, ValueNone, arg)
+        
+    member x.Restart(definition, root, arg) =
+        x.Stop()
+        x.StartInternal(definition, ValueSome root, ValueNone, ValueSome lastViewData, arg) |> ignore
+        
     member x.Stop() =
         // Dispose the subscriptions
         if disposableSubscription <> null then
@@ -101,6 +113,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>(arg: 'arg) =
         dispatch.DispatchViaThunk(msg)
 
     interface IRunner<'arg, 'msg, 'model, 'externalMsg> with
-        member x.Start(definition, rootOpt, parentOpt) = x.Start(definition, rootOpt, parentOpt)
+        member x.Start(definition, rootOpt, parentOpt, arg) = x.Start(definition, rootOpt, parentOpt, arg)
         member x.Stop() = x.Stop()
+        member x.Restart(definition, root, arg) = x.Restart(definition, root, arg)
         member x.Dispatch(msg) = x.Dispatch(msg)
