@@ -8,8 +8,6 @@ type IComponentHandler<'arg, 'msg, 'model, 'externalMsg> =
 /// Represent a component with its own internal runner
 type IComponentViewElement =
     inherit IViewElement
-    
-    abstract CreateForTarget: ProgramDefinition * obj * obj voption -> obj
 
 type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     (
@@ -70,15 +68,6 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             let target = runner.CreateView(parentOpt)
             handler.SetRunnerForTarget(ValueSome runner, target)
             target
-            
-        member x.CreateForTarget(_, target, parentOpt) =
-            let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
-            let runner = handler.CreateRunner()
-            let target = runner.Start(runnerDefinition, ValueSome (box target), parentOpt, arg)
-            dispatchStateChangedIfNeeded runner
-            handler.SetRunnerForTarget(ValueSome runner, target)
-            target
-            
 
         member x.Update(_, prevOpt, target) =
             match handler.GetRunnerForTarget(target) with
@@ -99,8 +88,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             | ValueSome runner ->
                 runner.Stop()
                 handler.SetRunnerForTarget(ValueNone, target)
-                
-        
+
         /// Get an attribute of the visual element
         member x.TryGetAttributeKeyed(key) = currentView |> ValueOption.bind (fun x -> x.TryGetAttributeKeyed key)
 
