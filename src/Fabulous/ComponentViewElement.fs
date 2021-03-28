@@ -8,7 +8,8 @@ type IComponentHandler<'arg, 'msg, 'model, 'externalMsg> =
 /// Represent a component with its own internal runner
 type IComponentViewElement =
     inherit IViewElement
-    
+    /// Create the target control from this ViewElement
+    abstract CreateForTarget: ProgramDefinition * obj -> obj
     abstract StartRunner: parent: obj -> unit
     abstract AttachView: view: obj * parent: obj * prevViewElement: IViewElement -> unit
     abstract DetachView: view: obj * parent: obj -> unit
@@ -78,6 +79,15 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             handler.SetRunnerForTarget(ValueSome runner, target)
             target
 
+        member x.CreateForTarget(_, target) =
+            let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
+            let runner = handler.CreateRunner()
+            runner.Start(runnerDefinition, arg)
+            dispatchStateChangedIfNeeded runner
+            
+            handler.SetRunnerForTarget(ValueSome runner, target)
+            target
+
         member x.Update(_, prevOpt, target) =
             match handler.GetRunnerForTarget(target) with
             | ValueNone -> failwith "Can't reuse a control without an associated runner"
@@ -121,9 +131,9 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             let key = getKeyForRunnerFromParent parent
             match handler.GetRunnerForTarget(key) with
             | ValueSome runner ->
-                runner.AttachView(view, ValueSome previousViewElement)
                 handler.SetRunnerForTarget(ValueNone, key)
                 handler.SetRunnerForTarget(ValueSome runner, view)
+                runner.AttachView(view, ValueSome previousViewElement)
             | _ -> failwith "Could not attach view because runner is not started!"
                 
             
