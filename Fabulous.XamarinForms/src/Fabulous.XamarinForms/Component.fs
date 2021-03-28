@@ -22,7 +22,7 @@ module Component =
                 match runnerOpt with
                 | ValueNone -> bindableObject.ClearValue(ComponentRunnerProperty)
                 | ValueSome runner -> bindableObject.SetValue(ComponentRunnerProperty, runner)
-    
+
 [<AbstractClass; Sealed>]
 type Component() =
     static member inline forProgram(key, program, ?state: (('state -> 'msg) * 'state), ?externalMsg) =

@@ -8,6 +8,11 @@ type IComponentHandler<'arg, 'msg, 'model, 'externalMsg> =
 /// Represent a component with its own internal runner
 type IComponentViewElement =
     inherit IViewElement
+    
+    abstract StartRunner: parent: obj -> unit
+    abstract AttachView: view: obj * parent: obj * prevViewElement: IViewElement -> unit
+    abstract DetachView: view: obj * parent: obj -> unit
+    abstract StopRunner: parent: obj -> unit
 
 type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     (
@@ -52,6 +57,10 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             let msg = onStateChanged state
             runner.Dispatch(msg)
 
+    let getKeyForRunnerFromParent (parent: obj) =
+        System.String.Format("{0}_{1}", parent.GetHashCode(), key)
+        |> box
+
     member x.TargetType = runnerDefinition.GetType()
     
     member x.RunnerDefinition = runnerDefinition
@@ -89,6 +98,44 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                 runner.Stop()
                 handler.SetRunnerForTarget(ValueNone, target)
 
+        member x.StartRunner(parent) =
+            let key = getKeyForRunnerFromParent parent
+            match handler.GetRunnerForTarget(key) with
+            | ValueSome _ -> failwith "Could not start runner because it is already started!"
+            | _ ->                
+                let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
+                let runner = handler.CreateRunner()
+                runner.Start(runnerDefinition, arg)
+                dispatchStateChangedIfNeeded runner
+                handler.SetRunnerForTarget(ValueSome runner, key)
+
+        member x.StopRunner(parent) =
+            let key = getKeyForRunnerFromParent parent
+            match handler.GetRunnerForTarget(key) with
+            | ValueNone -> failwith "Could not stop runner because it is already stopped!"
+            | ValueSome runner ->
+                runner.Stop()
+                handler.SetRunnerForTarget(ValueNone, key)
+
+        member x.AttachView(view, parent, previousViewElement) =
+            let key = getKeyForRunnerFromParent parent
+            match handler.GetRunnerForTarget(key) with
+            | ValueSome runner ->
+                runner.AttachView(view, ValueSome previousViewElement)
+                handler.SetRunnerForTarget(ValueNone, key)
+                handler.SetRunnerForTarget(ValueSome runner, view)
+            | _ -> failwith "Could not attach view because runner is not started!"
+                
+            
+        member x.DetachView(view, parent) =
+            match handler.GetRunnerForTarget(view) with
+            | ValueSome runner ->
+                runner.DetachView()
+                handler.SetRunnerForTarget(ValueNone, view)
+                handler.SetRunnerForTarget(ValueSome runner, getKeyForRunnerFromParent parent)
+                
+            | ValueNone -> failwithf "Could not find runner to detach for view %O" view
+        
         /// Get an attribute of the visual element
         member x.TryGetAttributeKeyed(key) = currentView |> ValueOption.bind (fun x -> x.TryGetAttributeKeyed key)
 
