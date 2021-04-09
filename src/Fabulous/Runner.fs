@@ -38,7 +38,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             runnerDefinition.onError (sprintf "Unable to process message %0A" msg) ex
 
     and updateView updatedModel =
-        RunnerTracing.traceDebug runnerDefinition runnerId (sprintf "Updating view for model %0A..." updatedModel)
+        RunnerTracing.traceDebug runnerDefinition runnerId (System.String.Format("Updating view for model {0}...", (box updatedModel).GetHashCode()))
 
         let newPageElement = runnerDefinition.view updatedModel dispatch.DispatchViaThunk
 
@@ -49,7 +49,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
 
         lastViewData <- newPageElement
 
-        RunnerTracing.traceDebug runnerDefinition runnerId (sprintf "View updated for model %0A" updatedModel)
+        RunnerTracing.traceDebug runnerDefinition runnerId (System.String.Format("View updated for model {0}", (box updatedModel).GetHashCode()))
     
     let start definition arg =
         dispatch.SetDispatchThunk(definition.syncDispatch processMsg)
@@ -98,19 +98,18 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
     let detachView () =
         lastViewData.Unmount(rootView)
         rootView <- null
-    
 
     interface IRunner<'arg, 'msg, 'model, 'externalMsg> with
         member x.Arg = lastArg
         
         member x.Start(definition, arg) =
-            runnerId <- sprintf "<%s, %s, %s, %s> (Arg = %0A)" typeof<'arg>.Name typeof<'msg>.Name typeof<'model>.Name typeof<'externalMsg>.Name arg
+            runnerId <- System.String.Format("<{0}, {1}, {2}, {3}> (Arg {4} = {5})", typeof<'arg>.Name, typeof<'msg>.Name, typeof<'model>.Name, typeof<'externalMsg>.Name, arg.GetType().Name, (box arg).GetHashCode())
             RunnerTracing.traceDebug definition runnerId "Starting runner"
             start definition arg
         
         member x.Restart(definition, arg) =
-            runnerId <- sprintf "<%s, %s, %s, %s> (Arg = %0A)" typeof<'arg>.Name typeof<'msg>.Name typeof<'model>.Name typeof<'externalMsg>.Name arg
-            RunnerTracing.traceDebug definition runnerId (sprintf "Restarting runner. Old arg was %0A, new is %O" lastArg arg)
+            runnerId <- System.String.Format("<{0}, {1}, {2}, {3}> (Arg {4} = {5})", typeof<'arg>.Name, typeof<'msg>.Name, typeof<'model>.Name, typeof<'externalMsg>.Name, arg.GetType().Name, (box arg).GetHashCode())
+            RunnerTracing.traceDebug definition runnerId (System.String.Format("Restarting runner. Old arg was {0}, new is {1}", (box lastArg).GetHashCode(), (box arg).GetHashCode()))
             restart definition arg
         
         member x.Stop() =
