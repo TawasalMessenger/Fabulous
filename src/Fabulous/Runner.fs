@@ -116,7 +116,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
                 "<{0}, {1}, {2}, {3}> (Arg = {4})",
                 typeof<'arg>.Name, typeof<'msg>.Name, typeof<'model>.Name, typeof<'externalMsg>.Name,
                 getArgHashCode arg)
-            RunnerTracing.traceDebug definition runnerId (System.String.Format("Restarting runner. Old arg was {0}, new is {1}", (box lastArg).GetHashCode(), (box arg).GetHashCode()))
+            RunnerTracing.traceDebug definition runnerId (System.String.Format("Restarting runner. Old arg was {0}, new is {1}", (getArgHashCode lastArg), (getArgHashCode arg)))
             restart definition arg
         
         member x.Stop() =
