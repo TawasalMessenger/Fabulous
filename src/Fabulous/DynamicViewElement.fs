@@ -120,7 +120,7 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
     member x.TargetType = x.Handler.TargetType
 
     member x.Create(definition: ProgramDefinition, parentOpt: obj voption) =
-        ProgramTracing.traceDebug definition (sprintf "Create %O" x.Handler.TargetType)
+        ProgramTracing.traceDebug definition (sprintf "Create %O with key %O" x.Handler.TargetType (x.TryKey |> ValueOption.defaultValue null))
 
         let target = x.Handler.Create(definition, x, parentOpt)
         x.Update(definition, ValueNone, target)
@@ -132,7 +132,7 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
         target
 
     member x.Update(definition, prevOpt: DynamicViewElement voption, target) =
-        ProgramTracing.traceDebug definition (sprintf "Update %A" x)
+        ProgramTracing.traceDebug definition (sprintf "Update %A with key %O" x (x.TryKey |> ValueOption.defaultValue null))
 
         let prevViewRefOpt =
             match prevOpt with
