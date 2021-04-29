@@ -23,7 +23,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         if v = null then -1 else v.GetHashCode()
 
     let rec processMsg msg =
-        RunnerTracing.traceDebug runnerDefinition runnerId (sprintf "Processing message %i..." (getHashCode msg))
+        // RunnerTracing.traceDebug runnerDefinition runnerId (sprintf "Processing message %i..." (getHashCode msg))
         try
             let updatedModel, cmd, _ = runnerDefinition.update msg lastModel
             lastModel <- updatedModel
@@ -37,7 +37,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
                 with ex ->
                     runnerDefinition.onError "Error executing commands" ex
 
-            RunnerTracing.traceDebug runnerDefinition runnerId (sprintf "Message %i processed" (getHashCode msg))
+            // RunnerTracing.traceDebug runnerDefinition runnerId (sprintf "Message %i processed" (getHashCode msg))
         with ex ->
             runnerDefinition.onError (sprintf "Unable to process message %i" (getHashCode msg)) ex
 
