@@ -62,6 +62,10 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
         System.String.Format("{0}_{1}", parent.GetHashCode(), key)
         |> box
 
+    member internal x.CurrentView 
+      with get () = currentView
+      and set v = currentView <- v
+
     member x.TargetType = runnerDefinition.GetType()
     
     member x.RunnerDefinition = runnerDefinition
@@ -163,9 +167,16 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             | ValueNone _ -> false, x :> IViewElement
 
         /// Remove an attribute from the visual element
-        member x.RemoveAttributeKeyed(key) =
+        member x.RemoveAttributeKeyed(attrKey) =
             match currentView with
-            | ValueSome currentView -> currentView.RemoveAttributeKeyed(key)
+            | ValueSome currentView ->
+                let ok, v = currentView.RemoveAttributeKeyed(attrKey)
+                if ok then
+                    let c = ComponentViewElement(handler, runnerDefinition, key, arg, state, externalMsg)
+                    c.CurrentView <- ValueSome v
+                    ok, c :> IViewElement
+                else
+                    false, x :> IViewElement
             | ValueNone _ -> false, x :> IViewElement
         
         member x.TryKey = ValueSome key
