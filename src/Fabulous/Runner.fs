@@ -8,7 +8,8 @@ type RunnerDispatch<'msg>()  =
 
 /// Starts the dispatch loop for the page with the given program
 type Runner<'arg, 'msg, 'model, 'externalMsg>() =
-    let mutable runnerId = ""
+    let runnerId = System.String.Format("<{0}, {1}, {2}, {3}> - {4}", typeof<'arg>.Name, typeof<'msg>.Name, typeof<'model>.Name, typeof<'externalMsg>.Name, System.Guid.NewGuid())
+    
     let mutable runnerDefinition = Unchecked.defaultof<RunnerDefinition<'arg, 'msg, 'model, 'externalMsg>>
     let mutable programDefinition = Unchecked.defaultof<ProgramDefinition>
     let mutable lastModel = Unchecked.defaultof<'model>

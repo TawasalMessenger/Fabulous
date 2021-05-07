@@ -294,12 +294,14 @@ module CodeGenerator =
                 w.printfn "        let curr%sOpt = curr.TryGetAttributeKeyed(%s)" p.UniqueName attributeKey
                 
                 match p.IsCollection, p.HasApply with
+                | _ when not (System.String.IsNullOrEmpty p.UnmountCode) ->
+                    w.printfn "        match curr%sOpt with ValueNone -> () | ValueSome viewElement -> %s viewElement target" p.UniqueName p.UnmountCode
                 | _, true ->
                     w.printfn "        ()"
                 | true, false ->
                     w.printfn "        Collections.unmountChildren curr%sOpt target.%s" p.UniqueName p.Name
                 | false, false ->
-                    w.printfn "        match curr%sOpt with ValueNone -> () | ValueSome viewElement -> viewElement.Unmount(target)" p.UniqueName
+                    w.printfn "        match curr%sOpt with ValueNone -> () | ValueSome viewElement -> viewElement.Unmount(target.%s)" p.UniqueName p.Name
             
         w.printfn ""
         w
