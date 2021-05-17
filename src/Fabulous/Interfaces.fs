@@ -101,6 +101,8 @@ type IRunner<'arg, 'msg, 'model, 'externalMsg> =
     abstract DetachView: unit -> unit
     /// Dispatch a message to the MVU loop of this runner
     abstract Dispatch: 'msg -> unit
+    /// Required for Fabulous.iOS/Fabulous.Android
+    abstract LastViewData: IViewElement
 
 module internal ProgramTracing =
     let inline traceDebug (definition: ProgramDefinition) = traceDebug definition.trace definition.traceLevel

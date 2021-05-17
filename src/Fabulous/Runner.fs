@@ -137,3 +137,5 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             detachView()
         
         member x.Dispatch(msg) = dispatch.DispatchViaThunk(msg)
+        
+        member x.LastViewData = lastViewData

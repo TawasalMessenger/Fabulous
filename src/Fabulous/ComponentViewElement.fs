@@ -99,7 +99,8 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                 // Only change the definition when it's actually a different runner definition
                 match prevOpt with
                 | ValueSome (:? ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg> as prev) when
-                    prev.Key = x.Key || System.Object.ReferenceEquals(prev.RunnerDefinition, runnerDefinition) -> ()
+                    prev.Key = x.Key || System.Object.ReferenceEquals(prev.RunnerDefinition, runnerDefinition) ->
+                    currentView <- ValueSome runner.LastViewData
                 | _ ->
                     let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
                     runner.Restart(runnerDefinition, arg)
