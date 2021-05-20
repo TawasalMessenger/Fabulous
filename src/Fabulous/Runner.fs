@@ -91,7 +91,6 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         stop()
         start definition arg
         if rootView <> null then
-            prevViewData.Unmount(rootView)
             lastViewData.Update(programDefinition, ValueSome prevViewData, rootView)
         
     let createView parentViewOpt =
