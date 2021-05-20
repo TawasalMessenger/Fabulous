@@ -1,9 +1,9 @@
 <Project>
   <!-- NuGet Specs -->
   <PropertyGroup>
-    <Version>0.70.0.23</Version>
+    <Version>0.70.0.24</Version>
     <Authors>Fabulous Contributors</Authors>
-    <PackageVersion>0.70.0.23</PackageVersion>
+    <PackageVersion>0.70.0.24</PackageVersion>
     <PackageReleaseNotes>VERY EARLY PREVIEW, DO NOT USE UNLESS YOU KNOW WHAT YOU ARE DOING.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
