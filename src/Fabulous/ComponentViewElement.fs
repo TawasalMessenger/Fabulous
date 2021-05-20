@@ -112,6 +112,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             | ValueNone -> ()
             | ValueSome runner ->
                 runner.Stop()
+                runner.DetachView()
                 handler.SetRunnerForTarget(ValueNone, target)
 
         member x.StartRunner(parent) =
@@ -149,7 +150,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                 runner.DetachView()
                 handler.SetRunnerForTarget(ValueNone, view)
                 handler.SetRunnerForTarget(ValueSome runner, getKeyForRunnerFromParent parent)
-                
+
             | ValueNone -> failwithf "Could not find runner to detach for view %O" view
         
         /// Get an attribute of the visual element
