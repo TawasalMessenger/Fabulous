@@ -10,7 +10,7 @@ type RunnerDispatch<'msg>()  =
 type Runner<'arg, 'msg, 'model, 'externalMsg>() =
 
     let getTypeName (t: System.Type) =
-        System.String.Format("{0}.{1}", t.Namespace, t.FullName)
+        System.String.Format("{0}.{1}", t.Namespace, t.Name)
         
     let mutable runnerId =
         System.String.Format("<{0}, {1}, {2}, {3}> - {4}",
