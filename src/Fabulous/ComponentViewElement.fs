@@ -112,8 +112,8 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             | ValueNone -> ()
             | ValueSome runner ->
                 runner.Stop()
-                runner.DetachView()
                 handler.SetRunnerForTarget(ValueNone, target)
+                runner.DetachView()
 
         member x.StartRunner(parent) =
             let key = getKeyForRunnerFromParent parent
