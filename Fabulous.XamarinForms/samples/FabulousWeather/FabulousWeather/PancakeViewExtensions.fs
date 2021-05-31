@@ -53,7 +53,7 @@ module PancakeViewExtensions =
             match backgroundGradientStops with None -> () | Some v -> attribs.Add(backgroundGradientStopsAttribKey, v)
 
             // The creation method
-            let create _ _ = Xamarin.Forms.PancakeView.PancakeView()
+            let create _ _ _ = Xamarin.Forms.PancakeView.PancakeView()
 
             // The incremental update method
             let update (definition: ProgramDefinition) (prev: DynamicViewElement voption) (source: DynamicViewElement) (target: Xamarin.Forms.PancakeView.PancakeView) =
@@ -68,8 +68,8 @@ module PancakeViewExtensions =
             let updateAttachedProperties propertyKey definition prevOpt source targetChild =
                 ViewBuilders.UpdateViewAttachedProperties(propertyKey, definition, prevOpt, source, targetChild)
                 
-            let unmount curr target =
-                ViewBuilders.UnmountView(curr, target)
+            let unmount curr target stopRunner =
+                ViewBuilders.UnmountView(curr, target, stopRunner)
 
             let handler =
                 Registrar.Register(typeof<Xamarin.Forms.PancakeView.PancakeView>.FullName, create, update, updateAttachedProperties, unmount)

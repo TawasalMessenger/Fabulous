@@ -277,12 +277,12 @@ module CodeGenerator =
         w
         
     let generateUnmountFunction (data: UnmountData) (w: StringWriter) =
-        w.printfn "    static member Unmount%s (curr: DynamicViewElement, target: %s) =" data.Name data.FullName
+        w.printfn "    static member Unmount%s (curr: DynamicViewElement, target: %s, stopRunner: bool) =" data.Name data.FullName
         
         // Update inherited members
         if data.BaseName.IsSome then
             w.printfn "        // Unmount inherited members"
-            w.printfn "        ViewBuilders.Unmount%s(curr, target)" data.BaseName.Value
+            w.printfn "        ViewBuilders.Unmount%s(curr, target, stopRunner)" data.BaseName.Value
             
         if data.Properties.Length = 0 then
             w.printfn "        ()"
@@ -295,13 +295,13 @@ module CodeGenerator =
                 
                 match p.IsCollection, p.HasApply with
                 | _ when not (System.String.IsNullOrEmpty p.UnmountCode) ->
-                    w.printfn "        match curr%sOpt with ValueNone -> () | ValueSome viewElement -> %s viewElement target" p.UniqueName p.UnmountCode
+                    w.printfn "        match curr%sOpt with ValueNone -> () | ValueSome viewElement -> %s viewElement target stopRunner" p.UniqueName p.UnmountCode
                 | _, true ->
                     w.printfn "        ()"
                 | true, false ->
-                    w.printfn "        Collections.unmountChildren curr%sOpt target.%s" p.UniqueName p.Name
+                    w.printfn "        Collections.unmountChildren curr%sOpt target.%s stopRunner" p.UniqueName p.Name
                 | false, false ->
-                    w.printfn "        match curr%sOpt with ValueNone -> () | ValueSome viewElement -> viewElement.Unmount(target.%s)" p.UniqueName p.Name
+                    w.printfn "        match curr%sOpt with ValueNone -> () | ValueSome viewElement -> viewElement.Unmount(target.%s, stopRunner)" p.UniqueName p.Name
             
         w.printfn ""
         w
@@ -341,7 +341,7 @@ module CodeGenerator =
             w.printfn "                (fun def curr parentOpt -> ViewBuilders.Create%s(def, curr, parentOpt))," data.Name
             w.printfn "                (fun def prev curr target -> ViewBuilders.Update%s(def, prev, curr, target))," data.Name
             w.printfn "                (fun key def prev curr target -> ViewBuilders.Update%sAttachedProperties(key, def, prev, curr, target))," data.Name
-            w.printfn "                (fun curr target -> ViewBuilders.Unmount%s(curr, target))" data.Name
+            w.printfn "                (fun curr target stopRunner -> ViewBuilders.Unmount%s(curr, target, stopRunner))" data.Name
             w.printfn "            )"
             w.printfn ""
             w.printfn "        DynamicViewElement.Create(handler, attribBuilder)"
