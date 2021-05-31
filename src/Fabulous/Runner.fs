@@ -91,6 +91,9 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
                 definition.onError "Error executing commands" ex
 
     let stop () =
+        // Stop processing messages
+        dispatch.SetDispatchThunk(ignore)
+
         // Dispose the subscriptions
         if disposableSubscription <> null then
             disposableSubscription.Dispose()
