@@ -51,7 +51,7 @@ and IViewElement =
     /// Update an existing control by applying the diff between a previous ViewElement and this one
     abstract Update: ProgramDefinition * IViewElement voption * obj -> unit
     /// Signal the ViewElement that its associated control is no longer available
-    abstract Unmount: obj -> unit
+    abstract Unmount: target: obj * stopRunner: bool -> unit
     /// Try get the key of this ViewElement
     abstract TryKey: string voption with get
     /// Target type of the control that will be created by this ViewElement
@@ -98,7 +98,7 @@ type IRunner<'arg, 'msg, 'model, 'externalMsg> =
     /// Attach an existing view to the runner and update it with the current state
     abstract AttachView: existingView: obj * existingViewPrevModelOpt: IViewElement voption -> unit
     /// Detach the currently attached view from the runner
-    abstract DetachView: unit -> unit
+    abstract DetachView: stopChildRunners: bool -> unit
     /// Dispatch a message to the MVU loop of this runner
     abstract Dispatch: 'msg -> unit
     /// Required for Fabulous.iOS/Fabulous.Android

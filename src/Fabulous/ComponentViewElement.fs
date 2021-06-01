@@ -107,13 +107,13 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                     
                 dispatchStateChangedIfNeeded runner
                 
-        member x.Unmount(target) =
+        member x.Unmount(target, stopRunner) =
             match handler.GetRunnerForTarget(target) with
             | ValueNone -> ()
             | ValueSome runner ->
-                runner.Stop()
                 handler.SetRunnerForTarget(ValueNone, target)
-                runner.DetachView()
+                if stopRunner then runner.Stop()
+                runner.DetachView(stopRunner)
 
         member x.StartRunner(parent) =
             let key = getKeyForRunnerFromParent parent
@@ -147,7 +147,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
         member x.DetachView(view, parent) =
             match handler.GetRunnerForTarget(view) with
             | ValueSome runner ->
-                runner.DetachView()
+                runner.DetachView(true)
                 handler.SetRunnerForTarget(ValueNone, view)
                 handler.SetRunnerForTarget(ValueSome runner, getKeyForRunnerFromParent parent)
 

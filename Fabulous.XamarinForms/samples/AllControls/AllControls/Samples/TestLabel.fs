@@ -17,7 +17,7 @@ module TestLabel =
             match text with None -> () | Some v -> attribs.Add(TestLabelTextAttribKey, v)
             match fontFamily with None -> () | Some v -> attribs.Add(TestLabelFontFamilyAttribKey, v)
 
-            let create _ _ = Xamarin.Forms.Label()
+            let create _ _ _ = Xamarin.Forms.Label()
 
             let update (definition: ProgramDefinition) (prevOpt: DynamicViewElement voption) (source: DynamicViewElement) (target: Xamarin.Forms.Label) =
                 ViewBuilders.UpdateView(definition, prevOpt, source, target)
@@ -27,8 +27,8 @@ module TestLabel =
             let updateAttachedProperties propertyKey definition prevOpt source targetChild =
                 ViewBuilders.UpdateViewAttachedProperties(propertyKey, definition, prevOpt, source, targetChild)
 
-            let unmount curr target =
-                ViewBuilders.UnmountView(curr, target)
+            let unmount curr target stopRunner =
+                ViewBuilders.UnmountView(curr, target, stopRunner)
             
             let handler =
                 Registrar.Register("AllControls.Samples.TestLabel", create, update, updateAttachedProperties, unmount)

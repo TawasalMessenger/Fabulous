@@ -114,8 +114,8 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
         rootView <- existingView
         
-    let detachView () =
-        lastViewData.Unmount(rootView)
+    let detachView stopChildRunners =
+        lastViewData.Unmount(rootView, stopChildRunners)
         rootView <- null
 
     interface IRunner<'arg, 'msg, 'model, 'externalMsg> with
@@ -155,9 +155,9 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             RunnerTracing.traceDebug runnerDefinition runnerId "Attaching view to runner"
             attachView existingView existingViewPrevModelOpt
         
-        member x.DetachView() =
+        member x.DetachView(stopChildRunners) =
             RunnerTracing.traceDebug runnerDefinition runnerId "Detaching view from runner"
-            detachView()
+            detachView stopChildRunners
         
         member x.Dispatch(msg) = dispatch.DispatchViaThunk(msg)
         

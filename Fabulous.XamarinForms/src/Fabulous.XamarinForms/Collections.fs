@@ -307,7 +307,7 @@ module Collections =
             (fun c -> create definition (ValueSome (box target)) c)
             (fun prev curr target -> update definition prev curr target)
             (fun prevOpt curr target -> attach definition prevOpt curr target)
-            (fun prev target -> prev.Unmount(target))
+            (fun prev target -> prev.Unmount(target, true))
 
     let updateItems definition prevCollOpt collOpt target keyOf canReuse create update attach unmount =
         updateCollection false prevCollOpt collOpt target keyOf canReuse
@@ -432,7 +432,7 @@ module Collections =
             ViewHelpers.tryGetKey ViewHelpers.canReuseView
             (fun def parentOpt c -> ViewElementHolder(c, def)) (fun _ _ curr holder -> holder.ViewElement <- curr)
             attach
-            (fun prev target -> prev.Unmount(target))
+            (fun prev target -> prev.Unmount(target, true))
 
     let inline getCollection<'T> (coll: IEnumerable) (set: ObservableCollection<'T> -> unit) =
         match coll with
@@ -522,11 +522,11 @@ module Collections =
             | oc -> oc
         updateChildren definition prevCollOpt collOpt targetColl (fun def parentOpt c -> c.Create(def, parentOpt) :?> GradientStop) updateChild (fun _ _ _ _ -> ())
         
-    let unmountChildren (collOpt: IViewElement[] voption) (targetColl: IList<'a>) =
+    let unmountChildren (collOpt: IViewElement[] voption) (targetColl: IList<'a>) stopRunner =
         match struct (collOpt, targetColl) with
         | struct (ValueNone, _) -> ()
         | struct (_, null) -> ()
         | struct (ValueSome coll, target) ->
             for i = 0 to coll.Length - 1 do
                 let targetChild = target.[i]
-                coll.[i].Unmount(targetChild)
+                coll.[i].Unmount(targetChild, stopRunner)
