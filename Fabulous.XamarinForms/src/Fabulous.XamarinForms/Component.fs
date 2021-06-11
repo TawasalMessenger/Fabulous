@@ -25,16 +25,18 @@ module Component =
 
 [<AbstractClass; Sealed>]
 type Component() =
-    static member inline forProgram(key, program, ?state: (('state -> 'msg) * 'state), ?externalMsg) =
+    static member inline forProgram(runnerType, runnerId, program, ?state: (('state -> 'msg) * 'state), ?externalMsg, ?key) =
         let stateOpt = match state with Some x -> ValueSome x | None -> ValueNone
         let externalMsgOpt = match externalMsg with Some x -> ValueSome x | None -> ValueNone
+        let key = match key with Some x -> ValueSome x | None -> ValueNone
         
         let handler = Component.ComponentHandler<unit, 'msg, 'model, 'externalMsg>()
-        ComponentViewElement(handler, program, key, (), stateOpt, externalMsgOpt)
+        ComponentViewElement(handler, program, runnerType, runnerId, (), key, stateOpt, externalMsgOpt)
     
-    static member inline forProgramWithArgs(key, program, args, ?state: (('state -> 'msg) * 'state), ?externalMsg) =
+    static member inline forProgramWithArgs(runnerType, runnerId, program, args, ?state: (('state -> 'msg) * 'state), ?externalMsg, ?key) =
         let stateOpt = match state with Some x -> ValueSome x | None -> ValueNone
         let externalMsgOpt = match externalMsg with Some x -> ValueSome x | None -> ValueNone
+        let key = match key with Some x -> ValueSome x | None -> ValueNone
         
         let handler = Component.ComponentHandler<'arg, 'msg, 'model, 'externalMsg>()
-        ComponentViewElement(handler, program, key, args, stateOpt, externalMsgOpt)
+        ComponentViewElement(handler, program, runnerType, runnerId, args, key, stateOpt, externalMsgOpt)
