@@ -48,6 +48,10 @@ type ProgramDefinition =
 and IViewElement =
     /// Create the target control from this ViewElement
     abstract Create: ProgramDefinition * obj voption -> obj
+    /// Start the runner from this ViewElement and it's children
+    abstract member Start: unit -> unit 
+    /// Stop the runner from this ViewElement and it's children
+    abstract member Stop: unit -> unit 
     /// Update an existing control by applying the diff between a previous ViewElement and this one
     abstract Update: ProgramDefinition * IViewElement voption * obj -> unit
     /// Signal the ViewElement that its associated control is no longer available
@@ -102,7 +106,8 @@ type IRunner<'arg, 'msg, 'model, 'externalMsg> =
     /// Dispatch a message to the MVU loop of this runner
     abstract Dispatch: 'msg -> unit
     /// Required for Fabulous.iOS/Fabulous.Android
-    abstract LastViewData: IViewElement
+    abstract LastViewData: IViewElement with get, set
+    abstract LastState: obj with get, set
 
 module internal ProgramTracing =
     let inline traceDebug (definition: ProgramDefinition) = traceDebug definition.trace definition.traceLevel

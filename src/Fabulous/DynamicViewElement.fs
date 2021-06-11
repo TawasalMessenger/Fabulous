@@ -179,6 +179,23 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
 
     interface IViewElement with
         member x.Create(definition, parentOpt) = x.Create(definition, parentOpt)
+        
+        member x.Start() =
+          for attr in attribs do
+              match attr.Value with
+              | :? IViewElement as v -> v.Start()
+              | :? (IViewElement seq) as v ->
+                  for v in v do v.Start()
+              | _ -> ()
+        
+        member x.Stop() =
+          for attr in attribs do
+              match attr.Value with
+              | :? IViewElement as v -> v.Stop()
+              | :? (IViewElement seq) as v ->
+                  for v in v do v.Stop()
+              | _ -> ()
+        
         member x.Update(definition, prevOpt, target) =
             let prevOpt =
                 match prevOpt with

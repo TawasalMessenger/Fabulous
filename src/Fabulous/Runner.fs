@@ -27,6 +27,8 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
     let mutable disposableSubscription: System.IDisposable = null
     let mutable rootView = null
     let mutable lastArg = Unchecked.defaultof<'arg>
+    let mutable running = false
+    let mutable isChangedWhenDetached = false
     let dispatch = RunnerDispatch<'msg>()
 
     let getHashCode (v: 'a) =
@@ -41,6 +43,9 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
 
             if rootView <> null then
                 updateView updatedModel
+                isChangedWhenDetached <- false
+            else
+                isChangedWhenDetached <- true
 
             for sub in cmd do
                 try
@@ -98,7 +103,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         if disposableSubscription <> null then
             disposableSubscription.Dispose()
             disposableSubscription <- null
-            
+
     let restart definition arg =
         let prevViewData = lastViewData
         stop()
@@ -107,31 +112,44 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             lastViewData.Update(programDefinition, ValueSome prevViewData, rootView)
         
     let createView parentViewOpt =
+        if isChangedWhenDetached then
+            lastViewData <- runnerDefinition.view lastModel dispatch.DispatchViaThunk
+
         rootView <- lastViewData.Create(programDefinition, parentViewOpt)
         rootView
         
     let attachView existingView existingViewPrevModelOpt =
-        lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
         rootView <- existingView
+        match existingViewPrevModelOpt with
+        | ValueSome viewElement ->
+          lastViewData <- viewElement 
+          updateView lastModel
+        | _ ->
+          lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
         
     let detachView stopChildRunners =
-        lastViewData.Unmount(rootView, stopChildRunners)
-        rootView <- null
+        if rootView <> null then
+          lastViewData.Unmount(rootView, stopChildRunners)
+          rootView <- null
 
     interface IRunner<'arg, 'msg, 'model, 'externalMsg> with
         member x.Arg = lastArg
         
         member x.Start(definition, arg) =
-            runnerId <-
-                System.String.Format("<{0}, {1}, {2}, {3}> (Arg = {4})",
-                                     getTypeName typeof<'arg>,
-                                     getTypeName typeof<'msg>,
-                                     getTypeName typeof<'model>,
-                                     getTypeName typeof<'externalMsg>,
-                                     getHashCode arg)
-            RunnerTracing.traceDebug definition runnerId "Starting runner"
-            start definition arg
-        
+            if not running then
+                runnerId <-
+                    System.String.Format("<{0}, {1}, {2}, {3}> (Arg = {4})",
+                                         getTypeName typeof<'arg>,
+                                         getTypeName typeof<'msg>,
+                                         getTypeName typeof<'model>,
+                                         getTypeName typeof<'externalMsg>,
+                                         getHashCode arg)
+                RunnerTracing.traceDebug definition runnerId "Starting runner"
+                start definition arg
+                running <- true
+            else
+                RunnerTracing.traceDebug definition runnerId "Runner already started!"
+                
         member x.Restart(definition, arg) =
             runnerId <- System.String.Format(
                 "<{0}, {1}, {2}, {3}> (Arg = {4})",
@@ -144,8 +162,13 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             restart definition arg
         
         member x.Stop() =
-            RunnerTracing.traceDebug runnerDefinition runnerId "Stopping runner"
-            stop()
+            if running then
+                RunnerTracing.traceDebug runnerDefinition runnerId "Stopping runner"
+                stop()
+                running <- false
+            else
+                RunnerTracing.traceDebug runnerDefinition runnerId "Runner already stopped!"
+                
         
         member x.CreateView(parentViewOpt) =
             RunnerTracing.traceDebug runnerDefinition runnerId "Creating view for runner"
@@ -161,4 +184,8 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         
         member x.Dispatch(msg) = dispatch.DispatchViaThunk(msg)
         
-        member x.LastViewData = lastViewData
+        member x.LastViewData
+            with get () = lastViewData
+            and set (v) = lastViewData <- v
+
+        member val LastState = null with get, set
