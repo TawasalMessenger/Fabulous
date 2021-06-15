@@ -102,7 +102,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
 
         member x.Update(_, prevOpt, target) =
             match handler.GetRunnerForTarget(runnerId) with
-            | ValueNone -> failwith "Can't reuse a control without an started runner"
+            | ValueNone -> failwithf "Can't reuse a control without an started runner (runnerId = %s)" runnerId
             | ValueSome runner ->
                 // Only change the definition when it's actually a different runner definition
                 match prevOpt with
