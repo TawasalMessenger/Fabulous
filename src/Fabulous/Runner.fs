@@ -184,6 +184,10 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         
         member x.Dispatch(msg) = dispatch.DispatchViaThunk(msg)
         
+        member x.ForceUpdateView(prevViewElement) =
+            if running && lastViewData <> Unchecked.defaultof<IViewElement> && rootView <> null then
+                lastViewData.Update(programDefinition, prevViewElement, rootView)
+        
         member x.ForceViewData() =
             if running && lastViewData = Unchecked.defaultof<IViewElement> then
                 lastViewData <- runnerDefinition.view lastModel dispatch.DispatchViaThunk

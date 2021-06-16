@@ -12,17 +12,19 @@ type IComponentViewElement =
     
 
 type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
-    (
-        handler: IComponentHandler<'arg, 'msg, 'model, 'externalMsg>,
-        runnerDefinition: RunnerDefinition<'arg, 'msg, 'model, 'externalMsg>,
-        runnerType: string,
-        runnerId: string,
-        arg: 'arg,
-        key: string voption,
-        state: (('state -> 'msg) * 'state) voption,
-        externalMsg: ('externalMsg -> unit) voption
-    ) =
-
+    private
+        (
+            handler: IComponentHandler<'arg, 'msg, 'model, 'externalMsg>,
+            runnerDefinition: RunnerDefinition<'arg, 'msg, 'model, 'externalMsg>,
+            runnerType: string,
+            runnerId: string,
+            arg: 'arg,
+            key: string voption,
+            state: (('state -> 'msg) * 'state) voption,
+            externalMsg: ('externalMsg -> unit) voption,
+            componentChanged: bool
+        ) =
+    
     let withExternalMsgsIfNeeded (runnerDefinition: RunnerDefinition<'arg, 'msg, 'model, 'externalMsg>) =
         let runnerDefinition = { runnerDefinition with view = runnerDefinition.view }
         match externalMsg with
@@ -49,10 +51,19 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             runner.Dispatch(msg)
         | _ -> ()
 
-    member internal x.CurrentView 
-      with get () =
-          handler.GetRunnerForTarget runnerId
-          |> ValueOption.map (fun x -> x.ForceViewData())
+    let mutable currentView = ValueNone
+
+    let getRunnerView () =
+        currentView <-
+            handler.GetRunnerForTarget runnerId
+              |> ValueOption.map (fun x -> x.ForceViewData())
+        currentView
+    
+    new
+        (
+            handler, runnerDefinition, runnerType, runnerId,
+            arg, key, state, externalMsg
+        ) = ComponentViewElement(handler, runnerDefinition, runnerType, runnerId, arg, key, state, externalMsg, false)
 
     member x.TargetType = runnerDefinition.GetType()
     
@@ -61,7 +72,28 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     member x.Key = key
     
     member x.RunnerId = runnerId
+    
+    member internal x.CurrentViewElement with get () = currentView
 
+    member private x.TryRemoveAttribute(removeFn) =
+        match getRunnerView () with
+        | ValueSome currentRunnerView ->
+            let ok, v = removeFn currentRunnerView
+            if ok then
+                let c =
+                    ComponentViewElement(
+                      handler, runnerDefinition,
+                      runnerType, runnerId,
+                      arg, key, state, externalMsg, true
+                    )
+                match handler.GetRunnerForTarget(runnerId) with
+                | ValueSome runner -> runner.LastViewData <- v
+                | _ -> ()
+                ok, c :> IViewElement
+            else
+                false, x :> IViewElement
+        | ValueNone _ -> false, x :> IViewElement
+    
     interface IComponentViewElement with
         member x.Create(_, parentOpt) =
             let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
@@ -116,6 +148,9 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                             runner.AttachView(target, ValueSome prevRunner.LastViewData)
                         | _ ->
                             ()
+                    elif componentChanged then
+                        runner.ForceUpdateView(prev.CurrentViewElement)
+                        
 
                 | _ ->
                     let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
@@ -133,34 +168,26 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                 runner.DetachView(stopRunner)
 
         /// Get an attribute of the visual element
-        member x.TryGetAttributeKeyed(key) = x.CurrentView |> ValueOption.bind (fun x -> x.TryGetAttributeKeyed key)
+        member x.TryGetAttributeKeyed(key) =
+            getRunnerView ()
+            |> ValueOption.bind (fun x -> x.TryGetAttributeKeyed key)
 
         /// Get an attribute of the visual element
-        member x.TryGetAttribute(name) = x.CurrentView |> ValueOption.bind (fun x -> x.TryGetAttribute name)
+        member x.TryGetAttribute(name) =
+            getRunnerView ()
+            |> ValueOption.bind (fun x -> x.TryGetAttribute name)
 
         /// Get an attribute of the visual element
-        member x.GetAttributeKeyed(key) = x.CurrentView.Value.GetAttributeKeyed key
+        member x.GetAttributeKeyed(key) =
+            (getRunnerView ()).Value.GetAttributeKeyed key
 
         /// Remove an attribute from the visual element
         member x.RemoveAttribute(name) =
-            match x.CurrentView with
-            | ValueSome currentView -> currentView.RemoveAttribute(name)
-            | ValueNone _ -> false, x :> IViewElement
+            x.TryRemoveAttribute(fun v -> v.RemoveAttribute name)
 
         /// Remove an attribute from the visual element
         member x.RemoveAttributeKeyed(attrKey) =
-            match x.CurrentView with
-            | ValueSome currentView ->
-                let ok, v = currentView.RemoveAttributeKeyed(attrKey)
-                if ok then
-                    let c = ComponentViewElement(handler, runnerDefinition, runnerType, runnerId, arg, key, state, externalMsg)
-                    match handler.GetRunnerForTarget(runnerId) with
-                    | ValueSome runner -> runner.LastViewData <- v
-                    | _ -> ()
-                    ok, c :> IViewElement
-                else
-                    false, x :> IViewElement
-            | ValueNone _ -> false, x :> IViewElement
+            x.TryRemoveAttribute(fun v -> v.RemoveAttributeKeyed attrKey)
         
         member x.RunnerType = runnerType
         member x.TryKey = key
