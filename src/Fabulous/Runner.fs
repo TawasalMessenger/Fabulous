@@ -184,6 +184,14 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         
         member x.Dispatch(msg) = dispatch.DispatchViaThunk(msg)
         
+        member x.ForceViewData() =
+            if running && lastViewData = Unchecked.defaultof<IViewElement> then
+                lastViewData <- runnerDefinition.view lastModel dispatch.DispatchViaThunk
+                isChangedWhenDetached <- false
+                lastViewData
+            else
+                lastViewData
+        
         member x.LastViewData
             with get () = lastViewData
             and set (v) = lastViewData <- v

@@ -52,7 +52,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
     member internal x.CurrentView 
       with get () =
           handler.GetRunnerForTarget runnerId
-          |> ValueOption.map (fun x -> x.LastViewData)
+          |> ValueOption.map (fun x -> x.ForceViewData())
 
     member x.TargetType = runnerDefinition.GetType()
     

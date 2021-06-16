@@ -106,6 +106,7 @@ type IRunner<'arg, 'msg, 'model, 'externalMsg> =
     /// Dispatch a message to the MVU loop of this runner
     abstract Dispatch: 'msg -> unit
     /// Required for Fabulous.iOS/Fabulous.Android
+    abstract ForceViewData: unit -> IViewElement
     abstract LastViewData: IViewElement with get, set
     abstract LastState: obj with get, set
 
