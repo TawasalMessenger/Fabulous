@@ -188,12 +188,12 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
                   for v in v do v.Start()
               | _ -> ()
         
-        member x.Stop() =
+        member x.TryStop() =
           for attr in attribs do
               match attr.Value with
-              | :? IViewElement as v -> v.Stop()
+              | :? IViewElement as v -> v.TryStop()
               | :? (IViewElement seq) as v ->
-                  for v in v do v.Stop()
+                  for v in v do v.TryStop()
               | _ -> ()
         
         member x.Update(definition, prevOpt, target) =
@@ -216,7 +216,6 @@ and DynamicViewElement internal (handlerKey: int, attribs: KeyValuePair<int, obj
             match tryFindAttrib key.KeyValue with
             | ValueSome kvp -> unbox<'T>(kvp.Value)
             | ValueNone -> failwithf "Property '%s' does not exist on %s" key.Name x.Handler.TargetType.Name
-
             
         member x.Unmount(target, stopRunner) =
             // Unset the ViewRef if defined

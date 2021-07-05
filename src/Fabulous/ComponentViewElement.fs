@@ -58,7 +58,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             handler.GetRunnerForTarget runnerId
               |> ValueOption.map (fun x -> x.ForceViewData())
         currentView
-    
+
     new
         (
             handler, runnerDefinition, runnerType, runnerId,
@@ -66,13 +66,13 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
         ) = ComponentViewElement(handler, runnerDefinition, runnerType, runnerId, arg, key, state, externalMsg, false)
 
     member x.TargetType = runnerDefinition.GetType()
-    
+
     member x.RunnerDefinition = runnerDefinition
-    
+
     member x.Key = key
-    
+
     member x.RunnerId = runnerId
-    
+
     member internal x.CurrentViewElement with get () = currentView
 
     member private x.TryRemoveAttribute(removeFn) =
@@ -93,7 +93,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
             else
                 false, x :> IViewElement
         | ValueNone _ -> false, x :> IViewElement
-    
+
     interface IComponentViewElement with
         member x.Create(_, parentOpt) =
             let runnerDefinition = withExternalMsgsIfNeeded runnerDefinition
@@ -124,12 +124,11 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                 dispatchStateChangedIfNeeded runner
                 runner.LastViewData.Start()
 
-        member x.Stop() =
+        member x.TryStop() =
             match handler.GetRunnerForTarget(runnerId) with
             | ValueSome runner ->
-                runner.DetachView(true)
-                runner.Stop()
-                handler.SetRunnerForTarget(ValueNone, runnerId)
+                if runner.TryStop() then
+                  handler.SetRunnerForTarget(ValueNone, runnerId)
             | _ -> ()
 
         member x.Update(_, prevOpt, target) =
@@ -144,12 +143,12 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                     if prev.RunnerId <> runnerId then
                         match handler.GetRunnerForTarget(prev.RunnerId) with
                         | ValueSome prevRunner ->
-                            prevRunner.DetachView(false)
+                            prevRunner.DetachView(target, false)
                             runner.AttachView(target, ValueSome prevRunner.LastViewData)
                         | _ ->
                             ()
                     elif componentChanged then
-                        runner.ForceUpdateView(prev.CurrentViewElement)
+                        runner.ForceUpdateView(target, prev.CurrentViewElement)
                         
 
                 | _ ->
@@ -157,15 +156,14 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
                     runner.Restart(runnerDefinition, arg)
 
                 dispatchStateChangedIfNeeded runner
-                
+
         member x.Unmount(target, stopRunner) =
             match handler.GetRunnerForTarget(runnerId) with
             | ValueNone -> ()
             | ValueSome runner ->
-                if stopRunner then
+                runner.DetachView(target, stopRunner)
+                if stopRunner && runner.TryStop() then
                   handler.SetRunnerForTarget(ValueNone, runnerId)
-                  runner.Stop()
-                runner.DetachView(stopRunner)
 
         /// Get an attribute of the visual element
         member x.TryGetAttributeKeyed(key) =
@@ -188,7 +186,7 @@ type ComponentViewElement<'arg, 'msg, 'model, 'state, 'externalMsg>
         /// Remove an attribute from the visual element
         member x.RemoveAttributeKeyed(attrKey) =
             x.TryRemoveAttribute(fun v -> v.RemoveAttributeKeyed attrKey)
-        
+
         member x.RunnerType = runnerType
         member x.TryKey = key
         member x.TargetType = x.TargetType

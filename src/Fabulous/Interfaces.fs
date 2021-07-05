@@ -49,9 +49,9 @@ and IViewElement =
     /// Create the target control from this ViewElement
     abstract Create: ProgramDefinition * obj voption -> obj
     /// Start the runner from this ViewElement and it's children
-    abstract member Start: unit -> unit 
+    abstract Start: unit -> unit 
     /// Stop the runner from this ViewElement and it's children
-    abstract member Stop: unit -> unit 
+    abstract TryStop: unit -> unit 
     /// Update an existing control by applying the diff between a previous ViewElement and this one
     abstract Update: ProgramDefinition * IViewElement voption * obj -> unit
     /// Signal the ViewElement that its associated control is no longer available
@@ -95,18 +95,18 @@ type IRunner<'arg, 'msg, 'model, 'externalMsg> =
     abstract Start: RunnerDefinition<'arg, 'msg, 'model, 'externalMsg> * 'arg -> unit
     /// Restart the runner using a different definition
     abstract Restart: RunnerDefinition<'arg, 'msg, 'model, 'externalMsg> * 'arg -> unit
-    /// Stop the runner and dispose its subscriptions
-    abstract Stop: unit -> unit
+    /// Try stop the runner and dispose its subscriptions
+    abstract TryStop: unit -> bool
     /// Create a view with the current runner state and attach it
     abstract CreateView: parentViewOpt: obj voption -> obj
     /// Attach an existing view to the runner and update it with the current state
     abstract AttachView: existingView: obj * existingViewPrevModelOpt: IViewElement voption -> unit
     /// Detach the currently attached view from the runner
-    abstract DetachView: stopChildRunners: bool -> unit
+    abstract DetachView: target: obj * stopChildRunners: bool -> unit
     /// Dispatch a message to the MVU loop of this runner
     abstract Dispatch: 'msg -> unit
     /// Required for Fabulous.iOS/Fabulous.Android
-    abstract ForceUpdateView: IViewElement voption -> unit
+    abstract ForceUpdateView: obj * IViewElement voption -> unit
     abstract ForceViewData: unit -> IViewElement
     abstract LastViewData: IViewElement with get, set
     abstract LastState: obj with get, set

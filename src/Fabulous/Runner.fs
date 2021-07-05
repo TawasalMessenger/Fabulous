@@ -25,10 +25,10 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
     let mutable lastModel = Unchecked.defaultof<'model>
     let mutable lastViewData = Unchecked.defaultof<IViewElement>
     let mutable disposableSubscription: System.IDisposable = null
-    let mutable rootView = null
     let mutable lastArg = Unchecked.defaultof<'arg>
     let mutable running = false
     let mutable isChangedWhenDetached = false
+    let attachedViews = ResizeArray<_>()
     let dispatch = RunnerDispatch<'msg>()
 
     let getHashCode (v: 'a) =
@@ -41,8 +41,8 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             let updatedModel, cmd, _ = runnerDefinition.update msg lastModel
             lastModel <- updatedModel
 
-            if rootView <> null then
-                updateView updatedModel
+            if attachedViews.Count > 0 then
+                updateView updatedModel null
                 isChangedWhenDetached <- false
             else
                 isChangedWhenDetached <- true
@@ -57,15 +57,21 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         with ex ->
             runnerDefinition.onError (sprintf "Unable to process message %i" (getHashCode msg)) ex
 
-    and updateView updatedModel =
+    and updateView updatedModel specificView =
         RunnerTracing.traceDebug runnerDefinition runnerId (System.String.Format("Updating view for model {0}...", (getHashCode updatedModel)))
 
         let newPageElement = runnerDefinition.view updatedModel dispatch.DispatchViaThunk
 
-        if runnerDefinition.canReuseView lastViewData newPageElement then
-            newPageElement.Update(programDefinition, ValueSome lastViewData, rootView)
+        let inline upd view =
+            if runnerDefinition.canReuseView lastViewData newPageElement then
+                newPageElement.Update(programDefinition, ValueSome lastViewData, view)
+            else
+                newPageElement.Update(programDefinition, ValueNone, view)
+
+        if specificView <> null then
+            upd specificView
         else
-            newPageElement.Update(programDefinition, ValueNone, rootView)
+            for view in attachedViews do upd view
 
         lastViewData <- newPageElement
 
@@ -95,42 +101,48 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             with ex ->
                 definition.onError "Error executing commands" ex
 
-    let stop () =
-        // Stop processing messages
-        dispatch.SetDispatchThunk(ignore)
+    let stop force =
+        let stopped = attachedViews.Count = 0 || force
+        if stopped then
+            // Stop processing messages
+            dispatch.SetDispatchThunk(ignore)
 
-        // Dispose the subscriptions
-        if disposableSubscription <> null then
-            disposableSubscription.Dispose()
-            disposableSubscription <- null
+            // Dispose the subscriptions
+            if disposableSubscription <> null then
+                disposableSubscription.Dispose()
+                disposableSubscription <- null
+
+        stopped
 
     let restart definition arg =
         let prevViewData = lastViewData
-        stop()
+        stop true |> ignore
         start definition arg
-        if rootView <> null then
-            lastViewData.Update(programDefinition, ValueSome prevViewData, rootView)
+        for view in attachedViews do
+            lastViewData.Update(programDefinition, ValueSome prevViewData, view)
         
     let createView parentViewOpt =
         if isChangedWhenDetached then
             lastViewData <- runnerDefinition.view lastModel dispatch.DispatchViaThunk
 
-        rootView <- lastViewData.Create(programDefinition, parentViewOpt)
-        rootView
+        let view = lastViewData.Create(programDefinition, parentViewOpt)
+        attachedViews.Add(view)
+        view
         
     let attachView existingView existingViewPrevModelOpt =
-        rootView <- existingView
-        match existingViewPrevModelOpt with
-        | ValueSome viewElement ->
-          lastViewData <- viewElement 
-          updateView lastModel
-        | _ ->
-          lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
+        if not (attachedViews.Contains existingView) then
+            attachedViews.Add(existingView)
+
+            match existingViewPrevModelOpt with
+            | ValueSome viewElement when attachedViews.Count = 1 ->
+              lastViewData <- viewElement 
+              updateView lastModel existingView
+            | _ ->
+              lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
         
-    let detachView stopChildRunners =
-        if rootView <> null then
-          lastViewData.Unmount(rootView, stopChildRunners)
-          rootView <- null
+    let detachView target stopChildRunners =
+        attachedViews.Remove target |> ignore
+        lastViewData.Unmount(target, stopChildRunners)
 
     interface IRunner<'arg, 'msg, 'model, 'externalMsg> with
         member x.Arg = lastArg
@@ -161,13 +173,13 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             RunnerTracing.traceDebug definition runnerId (System.String.Format("Restarting runner. Old arg was {0}, new is {1}", (getHashCode lastArg), (getHashCode arg)))
             restart definition arg
         
-        member x.Stop() =
+        member x.TryStop() =
             if running then
                 RunnerTracing.traceDebug runnerDefinition runnerId "Stopping runner"
-                stop()
-                running <- false
+                running <- stop false
             else
                 RunnerTracing.traceDebug runnerDefinition runnerId "Runner already stopped!"
+            running
                 
         
         member x.CreateView(parentViewOpt) =
@@ -178,15 +190,15 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             RunnerTracing.traceDebug runnerDefinition runnerId "Attaching view to runner"
             attachView existingView existingViewPrevModelOpt
         
-        member x.DetachView(stopChildRunners) =
+        member x.DetachView(target, stopChildRunners) =
             RunnerTracing.traceDebug runnerDefinition runnerId "Detaching view from runner"
-            detachView stopChildRunners
+            detachView target stopChildRunners
         
         member x.Dispatch(msg) = dispatch.DispatchViaThunk(msg)
         
-        member x.ForceUpdateView(prevViewElement) =
-            if running && lastViewData <> Unchecked.defaultof<IViewElement> && rootView <> null then
-                lastViewData.Update(programDefinition, prevViewElement, rootView)
+        member x.ForceUpdateView(target, prevViewElement) =
+            if running && lastViewData <> Unchecked.defaultof<IViewElement> then
+                lastViewData.Update(programDefinition, prevViewElement, target)
         
         member x.ForceViewData() =
             if running && lastViewData = Unchecked.defaultof<IViewElement> then
