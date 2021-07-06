@@ -42,7 +42,7 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
             lastModel <- updatedModel
 
             if attachedViews.Count > 0 then
-                updateView updatedModel null
+                updateView updatedModel
                 isChangedWhenDetached <- false
             else
                 isChangedWhenDetached <- true
@@ -57,23 +57,17 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         with ex ->
             runnerDefinition.onError (sprintf "Unable to process message %i" (getHashCode msg)) ex
 
-    and updateView updatedModel specificView =
+    and updateView updatedModel =
         RunnerTracing.traceDebug runnerDefinition runnerId (System.String.Format("Updating view for model {0}...", (getHashCode updatedModel)))
 
         let newPageElement = runnerDefinition.view updatedModel dispatch.DispatchViaThunk
 
         let canReuse = runnerDefinition.canReuseView lastViewData newPageElement
-        
-        let inline upd view =
+        for view in attachedViews do
             if canReuse then
                 newPageElement.Update(programDefinition, ValueSome lastViewData, view)
             else
                 newPageElement.Update(programDefinition, ValueNone, view)
-
-        if specificView <> null then
-            upd specificView
-        else
-            for view in attachedViews do upd view
 
         lastViewData <- newPageElement
 
@@ -134,6 +128,11 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
     let attachView existingView existingViewPrevModelOpt =
         if not (attachedViews.Contains existingView) then
             attachedViews.Add(existingView)
+            
+            if isChangedWhenDetached then
+                isChangedWhenDetached <- false
+                lastViewData <- runnerDefinition.view lastModel dispatch.DispatchViaThunk
+
             lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
         
     let detachView target stopChildRunners =
