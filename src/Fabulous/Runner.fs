@@ -62,8 +62,10 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
 
         let newPageElement = runnerDefinition.view updatedModel dispatch.DispatchViaThunk
 
+        let canReuse = runnerDefinition.canReuseView lastViewData newPageElement
+        
         let inline upd view =
-            if runnerDefinition.canReuseView lastViewData newPageElement then
+            if canReuse then
                 newPageElement.Update(programDefinition, ValueSome lastViewData, view)
             else
                 newPageElement.Update(programDefinition, ValueNone, view)
@@ -132,16 +134,9 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
     let attachView existingView existingViewPrevModelOpt =
         if not (attachedViews.Contains existingView) then
             attachedViews.Add(existingView)
-
-            match existingViewPrevModelOpt with
-            | ValueSome viewElement when attachedViews.Count = 1 ->
-              lastViewData <- viewElement 
-              updateView lastModel existingView
-            | _ ->
-              lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
+            lastViewData.Update(programDefinition, existingViewPrevModelOpt, existingView)
         
     let detachView target stopChildRunners =
-        attachedViews.Remove target |> ignore
         lastViewData.Unmount(target, stopChildRunners)
 
     interface IRunner<'arg, 'msg, 'model, 'externalMsg> with
