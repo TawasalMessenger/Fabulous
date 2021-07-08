@@ -159,3 +159,5 @@ type Runner<'arg, 'msg, 'model, 'externalMsg>() =
         member x.Dispatch(msg) = dispatch.DispatchViaThunk(msg)
         
         member x.LastViewData = lastViewData
+        
+        member x.CurrentModel = lastModel
